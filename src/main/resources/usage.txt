@@ -1,0 +1,54 @@
+ 
+Usage: 
+
+      java -jar dbtool.jar getNodes
+      java -jar dbtool.jar [param=value] ... [query]
+
+      java -jar dbtool.jar [param=value] ... getSchemas
+      java -jar dbtool.jar [param=value] ... getTables
+      java -jar dbtool.jar [param=value] ... describe [tablename]
+
+      java -jar dbtool.jar [param=value] ... -d  <metadata command>  [args ...]
+
+
+Parameters can be provided on the command-line or in a file named 'dbtool.properties'.
+If found, the properties file will be loaded from the following directories, in order:
+/etc , $PWD , $HOME/.dbtool .  Values provided on the command-line take precedence.  
+Parameter names are case-sensitive.
+
+Required parameters
+===================
+
+ jdbcClass
+ jdbcUrl
+ jdbcUser
+ jdbcPassword
+
+
+Opt. param  default  description
+==========  =======  ===========
+
+ node       n/a      Load node-specific properties
+ schema     n/a      Default schema to use for query
+ delim      ,        Field delimeter to use for output
+ fix        n/a      Filename: one/more queries, separated by ";"
+ query      n/a      Filename: a single query
+ inputCSV   n/a      Filename: CSV data for use in a PreparedStatement
+ inputText  n/a      Filename: Text data for use in a PreparedStatement (single column)
+
+ maxwidth   25       Maximum column with for human-readable output
+ maxrows    -1       Maximum number of rows (-1 for unlimited)
+ norepeats  0        Suppress repeating values for N leading columns 
+
+ commit     FALSE    Commit after sending the SQL
+ headers    FALSE    Print column headers
+ footer     FALSE    Print table footer (XXX rows returned)
+ quoteAll   FALSE    Double-quote all field values
+ quoteText  FALSE    Double-quote text field values only
+ human      FALSE    Print human-readable output
+ echo       FALSE    Echo query to the console
+ formatted  FALSE    Like 'human' but without the headers & footer
+ verbose    FALSE    Display verbose error messages
+ dobreak    FALSE    If norepeats is used, also visually distinguish groups
+ html       FALSE    Produce HTML output
+

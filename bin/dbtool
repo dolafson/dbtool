@@ -1,0 +1,10 @@
+#!/bin/bash
+#
+# this script facilitates use of random jdbc drivers 
+
+jarDir=`dirname $0`/../jar
+
+export CLASSPATH=`ls $jarDir/*.jar | awk '{ printf ("%s:",$1) }' | sed 's+ +:+g'`
+
+java -cp "$CLASSPATH" com.vikinghelmet.dbtool.dbtool "$@"
+
