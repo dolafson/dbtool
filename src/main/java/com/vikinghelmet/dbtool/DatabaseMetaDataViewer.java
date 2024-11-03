@@ -138,18 +138,21 @@ public class DatabaseMetaDataViewer {
     return result;
   }
 
-    private static List<String> getTables(Connection conn, String pattern) throws SQLException {
+    public static List<String> getTables(Connection conn, String pattern) throws SQLException {
         List<String> tables;
         // System.out.println ("class: "+conn.getClass().toString());
+
+        if (pattern == null || pattern.isEmpty()) {
+            pattern = DEFAULT_TABLE_NAME_PATTERN;
+        }
 
         // shortcut: if user didn't include a wildcard, stick it on the end
         if (! pattern.contains(DEFAULT_TABLE_NAME_PATTERN)) {
             pattern = pattern + DEFAULT_TABLE_NAME_PATTERN;
         }            
 
-        String catalog = DEFAULT_CATALOG;
         String schema  = getSchema();
-        tables = getTableList(conn, catalog, schema, pattern);
+        tables = getTableList(conn, null, schema, pattern);
         return tables;
     }
 
@@ -223,9 +226,7 @@ public class DatabaseMetaDataViewer {
       }
 
         if (cmd.equals(GET_TABLES)) {
-            String tablePattern = (args.length > 1) ? args[1].toUpperCase() : DEFAULT_TABLE_NAME_PATTERN;
-
-            List<String> tables = getTables(conn, tablePattern);
+            List<String> tables = getTables(conn, (args.length > 1) ? args[1] : null);
 
             for (String table : tables) {
                 System.out.println(""+table);

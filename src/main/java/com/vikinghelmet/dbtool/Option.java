@@ -9,7 +9,7 @@ package com.vikinghelmet.dbtool;
  */
 public enum Option {
   // booleans
-  describe, commit, dobreak, headers, footer, html, quoteAll, quoteText, logfix, formatted, echo, human, verbose, dump,
+  create, infer, describe, commit, dobreak, headers, footer, html, quoteAll, quoteText, formatted, echo, human, verbose, dump,
 
   errorOnEmptyResultSet,
 
@@ -20,7 +20,6 @@ public enum Option {
 
   // previously "keywords.{execute,admin,skip}
   executeKeywords("select,call"),
-  adminKeywords("reorg,backup,grant,revoke,describe"),
   skipKeywords("connect,--,commit,rollback,terminate,exit,quit"),
 
   jdbc_class,

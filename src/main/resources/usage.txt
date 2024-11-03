@@ -40,6 +40,8 @@ Opt. param  default  description
  maxrows    -1       Maximum number of rows (-1 for unlimited)
  norepeats  0        Suppress repeating values for N leading columns 
 
+ infer      FALSE    For use with inputCSV: infer table from filename
+ create     FALSE    For use with inputCSV: create table if not already there (all columns as varchar)
  commit     FALSE    Commit after sending the SQL
  headers    FALSE    Print column headers
  footer     FALSE    Print table footer (XXX rows returned)

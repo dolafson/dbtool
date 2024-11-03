@@ -49,11 +49,11 @@ public class dbtool
 
   private static void run(String query) throws SQLException, IOException
   {
-    query = replaceQueryTokens(query);
-
-    if(startsWith(query, getStringList(Option.adminKeywords))) {
-      query = "call sysproc.admin_cmd('" + query + "')";
+    if ((query == null || query.isEmpty()) && isEnabled(Option.infer)) {
+      query = inferQuery();
     }
+
+    query = replaceQueryTokens(query);
 
     if (isEnabled(Option.echo)) {
       println("");
@@ -66,7 +66,10 @@ public class dbtool
     try {
       String schema = getProperty(Option.schema);
 
-      stmt = (schema != null) ?
+      String inputCSV = getProperty(Option.inputCSV);
+      boolean input =  inputCSV != null && !inputCSV.isEmpty();
+
+      stmt = (schema != null && !input) ?
               executeWithSchema (query, conn, schema) :
               execute (query, conn);
 
@@ -86,6 +89,81 @@ public class dbtool
   }
 
   // --------------------------------------------------------------------
+  private static String inferQuery() throws SQLException, IOException
+  {
+    String inputFilename = getProperty (Option.inputCSV);
+
+    if (inputFilename == null) {
+      error("infer requires use of inputCSV", null);
+    }
+
+    setProperty(Option.commit, "true"); // I can't imagine ever wanting to use infer/create without commit
+
+    String tableName = inputFilename
+            .replaceAll("\\.csv","")
+            .replaceAll("\\.","_")
+            .replaceAll(".*/","");
+
+    List<String> columns = getColumns(inputFilename);
+
+    Connection conn = getConnection();
+    List<String> tableList = DatabaseMetaDataViewer.getTables(conn, tableName);
+
+    if (tableList.isEmpty()) {
+      StringBuilder builder = new StringBuilder("create table if not exists ")
+              .append(tableName)
+              .append(" ( ");
+
+      for (int i=0; i<columns.size(); i++){
+        builder.append(columns.get(i)).append(" varchar(255)");
+        if (i < columns.size()-1) builder.append(",");
+      }
+
+      String createStmt = builder.append(" );").toString();
+
+      if (isEnabled(Option.verbose)) {
+        println("createStmt: " + createStmt);
+      }
+      
+      execute (createStmt, conn);
+      conn.commit();
+    }
+
+    StringBuilder builder = new StringBuilder("insert into ")
+            .append(tableName)
+            .append(" ( ");
+
+    for (int i=0; i<columns.size(); i++){
+      builder.append(columns.get(i));
+      if (i < columns.size()-1) builder.append(",");
+    }
+
+    builder.append(" ) values ( ");
+
+    for (int i=0; i<columns.size(); i++){
+      builder.append(" ?s ");                         // note: the 's' in ?s implies varchar; it gets stripped out before preparing stmt
+      if (i < columns.size()-1) builder.append(",");
+    }
+
+    String insertStmt = builder.append(" );").toString();
+
+    if (isEnabled(Option.verbose)) {
+      println("insertStmt: " + insertStmt);
+    }
+
+    return insertStmt;
+  }
+
+  private static List<String> getColumns (String inputFilename) throws IOException {
+    InputStreamReader is = inputFilename.equals("-") ?
+            new InputStreamReader (System.in) :
+            new InputStreamReader (new FileInputStream(inputFilename));
+
+    ICsvListReader reader = new CsvListReader(is, CsvPreference.STANDARD_PREFERENCE);
+
+    List<String> list = reader.read();
+    return list;
+  }
 
   private static Statement executeWithSchema(String query, Connection conn, String schema)
     throws SQLException
@@ -128,15 +206,17 @@ public class dbtool
         println("building prepared statement, query = " +query);
     }
 
-    boolean update = !startsWith(query, getStringList(Option.executeKeywords));
-
+    boolean update   = !startsWith(query, getStringList(Option.executeKeywords));
     boolean prepared = update && query.contains("?");
-
     List<Class> fieldTypes = null;
 
     if (prepared) {
       fieldTypes = getPreparedStatementTypes(query);
       query = query.replace("?i","?").replace("?s","?");
+    }
+
+    if (isEnabled(Option.verbose)) {
+      println("final query = " +query);
     }
 
     PreparedStatement stmt = conn.prepareStatement(query);
@@ -226,6 +306,10 @@ public class dbtool
         List<String> list = null;
         ICsvListReader reader = new CsvListReader(is, CsvPreference.STANDARD_PREFERENCE);
 
+        if (isEnabled(Option.infer) || isEnabled(Option.headers)) {
+          reader.read(); // skip header line
+        }
+
         while ((list = reader.read()) != null)
         {
           // TODO: ensure array length matches number of ? in ps
@@ -314,14 +398,6 @@ public class dbtool
 
         if (startsWith(nextLine, getStringList(Option.skipKeywords))) {
           continue; // do nothing
-        }
-
-        // If this is one of the "admin" commands, wrap it in a call
-        // to the administrative commands stored procedure.
-        if (startsWith(nextLine, getStringList(Option.adminKeywords)))
-        {
-          String command = nextLine.trim().replaceAll(";$","");
-          nextLine = "call sysproc.admin_cmd('" + command + "')";
         }
 
         statement += " " + nextLine;
@@ -532,12 +608,22 @@ public class dbtool
         }
       }
 
-      if (queries.size() == 0) {
-        usage();
+
+      if (isEnabled(Option.create)) {
+        setProperty(Option.infer, "true"); // there is no good use for create without infer
       }
 
-      for (String query : queries) {
-        run(query);
+      if (isEnabled(Option.infer)) {
+        run("");
+      }
+      else {
+        if (queries.isEmpty() && !isEnabled(Option.infer)) {
+          usage();
+        }
+
+        for (String query : queries) {
+          run(query);
+        }
       }
     }
     catch (SQLException e) {
