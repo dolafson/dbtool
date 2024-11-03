@@ -237,7 +237,7 @@ public class DatabaseMetaDataViewer {
         if (cmd.equals(DESCRIBE)) {
             String catalog = DEFAULT_CATALOG;
             String schema  = getSchema();
-            String table   = (args.length > 1) ? args[1].toUpperCase() : DEFAULT_TABLE_NAME_PATTERN;
+            String table   = (args.length > 1) ? args[1] : DEFAULT_TABLE_NAME_PATTERN; // args[1].toUpperCase() :
 
             ResultSet rs = null;
             ResultSetWriter rsw = new ResultSetWriter();
