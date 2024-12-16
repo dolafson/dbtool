@@ -4,6 +4,9 @@
 
 jarDir=`dirname $0`/../jar
 
+[ ! -d $jarDir ] && jarDir=`dirname $0`/../target
+[ ! -d $jarDir ] && jarDir=/usr/local/dbtool/jar
+
 export CLASSPATH=`ls $jarDir/*.jar | awk '{ printf ("%s:",$1) }' | sed 's+ +:+g'`
 
 java -cp "$CLASSPATH" com.vikinghelmet.dbtool.dbtool "$@"
