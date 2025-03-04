@@ -212,7 +212,10 @@ public class dbtool
 
     if (prepared) {
       fieldTypes = getPreparedStatementTypes(query);
-      query = query.replace("?i","?").replace("?s","?");
+      query = query
+              .replace("?i","?")
+              .replace("?d","?")
+              .replace("?s","?");
     }
 
     if (isEnabled(Option.verbose)) {
@@ -265,6 +268,9 @@ public class dbtool
       String group = matcher.group();
       if (group.equals("?i")) {
         fieldTypes.add(Integer.class);
+      }
+      else if (group.equals("?d")) {
+        fieldTypes.add(Double.class);
       }
       else {
         fieldTypes.add(String.class);
