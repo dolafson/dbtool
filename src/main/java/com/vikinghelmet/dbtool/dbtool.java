@@ -312,7 +312,7 @@ public class dbtool
         List<String> list = null;
         ICsvListReader reader = new CsvListReader(is, CsvPreference.STANDARD_PREFERENCE);
 
-        if (isEnabled(Option.infer) || isEnabled(Option.headers)) {
+        if (isEnabled(Option.infer)) {
           reader.read(); // skip header line
         }
 
