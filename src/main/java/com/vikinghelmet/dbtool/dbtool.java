@@ -339,7 +339,16 @@ public class dbtool
               ps.setString(i+1, s);
             }
           }
-          rows += ps.executeUpdate();
+          ps.addBatch();
+          rows ++;
+          if (rows % 100 == 0) {
+            ps.executeBatch(); // executeUpdate();
+            // println("executeBatch, rows="+rows);
+          }
+        }
+
+        if (rows % 100 != 0) {
+          ps.executeBatch(); // executeUpdate();
         }
     }
 
