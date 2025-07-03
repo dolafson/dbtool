@@ -443,31 +443,21 @@ public class dbtool
     System.exit(1);
   }
 
-  public static void printResource(String filename)
+  public static void usage()
   {
-    try {
-      // look for file in classpath / jarfile(s)
-      URL url = dbtool.class.getClassLoader().getResource(filename);
-
-      if (url == null) {
-        System.err.println("resource not found: "+filename);
+    String filename = usageFile;
+    try (InputStream is = dbtool.class.getClassLoader().getResourceAsStream(filename))
+    {
+      if (is == null) {
+        System.err.println ("resource not found: "+filename);
       }
       else {
-        BufferedReader reader = new BufferedReader(new InputStreamReader(url.openStream()));
-        String line="";
-        while ((line = reader.readLine()) != null) {
-          println(line);
-        }
+        System.out.println (new String (is.readAllBytes()));
       }
     }
     catch (Exception e) {
       e.printStackTrace();
     }
-  }
-
-  public static void usage()
-  {
-    printResource(usageFile);
     System.exit(1);
   }
 

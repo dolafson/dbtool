@@ -292,8 +292,7 @@ public class DatabaseMetaDataViewer {
   }
 
   private static void usage() {
-    dbtool.printResource(usageFile);
-    System.exit(1);
+    dbtool.usage();
   }
 
   public static void main(String[] args) {
