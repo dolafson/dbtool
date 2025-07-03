@@ -31,8 +31,7 @@ Opt. param  default  description
  node       n/a      Load node-specific properties
  schema     n/a      Default schema to use for query
  delim      ,        Field delimeter to use for output
- fix        n/a      Filename: one/more queries, separated by ";"
- query      n/a      Filename: a single query
+ query      n/a      Filename: one/more queries, separated by ";"
  inputCSV   n/a      Filename: CSV data for use in a PreparedStatement
  inputText  n/a      Filename: Text data for use in a PreparedStatement (single column)
 

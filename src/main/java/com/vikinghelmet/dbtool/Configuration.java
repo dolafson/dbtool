@@ -71,14 +71,14 @@ public class Configuration {
 
   public static void enable(Option opt) {
     if (isEnabled(Option.verbose)) {
-      dbtool.println("enable: "+opt);
+      System.out.println("enable: "+opt);
     }
     props.setProperty(opt.getKey(), "true");
   }
 
   public static void disable(Option opt) {
     if (isEnabled(Option.verbose)) {
-      dbtool.println("enable: "+opt);
+      System.out.println("enable: "+opt);
     }
     props.setProperty(opt.getKey(), "false");
   }

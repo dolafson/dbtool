@@ -1,6 +1,5 @@
 package com.vikinghelmet.dbtool;
 
-import static com.vikinghelmet.dbtool.dbtool.println;
 import org.apache.commons.lang.BooleanUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
@@ -281,7 +280,7 @@ public class DatabaseMetaDataViewer {
         (new ResultSetWriter()).write ((ResultSet) (m.invoke(dmd, (Object[]) p)));
       }
       else {
-        println (""+m.invoke(dmd, (Object[]) p));
+        System.out.println (""+m.invoke(dmd, (Object[]) p));
       }
     }
     catch (IllegalAccessException e) {
@@ -304,7 +303,7 @@ public class DatabaseMetaDataViewer {
       runCommand(args);
     }
     catch (SQLException e) {
-      dbtool.dumpSQLException (e);
+      dbtool.error ("SQLException", e);
     }
   }
 }

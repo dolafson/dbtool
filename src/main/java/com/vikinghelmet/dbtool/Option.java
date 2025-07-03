@@ -20,8 +20,6 @@ public enum Option {
 
   // previously "keywords.{execute,admin,skip}
   executeKeywords("select,call"),
-  skipKeywords("connect,--,commit,rollback,terminate,exit,quit"),
-
   jdbc_class,
   jdbc_url,
   jdbc_user,
@@ -29,7 +27,6 @@ public enum Option {
   
   node,
   query,
-  fix,
   inputCSV,
   inputText,
   schema,

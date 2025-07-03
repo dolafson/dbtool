@@ -49,10 +49,6 @@ public class dbtool
 
   private static void run(String query) throws SQLException, IOException
   {
-    if ((query == null || query.isEmpty()) && isEnabled(Option.infer)) {
-      query = inferQuery();
-    }
-
     query = replaceQueryTokens(query);
 
     if (isEnabled(Option.echo)) {
@@ -79,7 +75,7 @@ public class dbtool
       }
     }
     catch (SQLException e) {
-      dumpSQLException(e);
+      error("SQLException", e);
       conn.rollback();
     }    
     finally {
@@ -121,10 +117,8 @@ public class dbtool
 
       String createStmt = builder.append(" );").toString();
 
-      if (isEnabled(Option.verbose)) {
-        println("createStmt: " + createStmt);
-      }
-      
+      debug("createStmt: " + createStmt);
+
       execute (createStmt, conn);
       conn.commit();
     }
@@ -147,9 +141,7 @@ public class dbtool
 
     String insertStmt = builder.append(" );").toString();
 
-    if (isEnabled(Option.verbose)) {
-      println("insertStmt: " + insertStmt);
-    }
+    debug("insertStmt: " + insertStmt);
 
     return insertStmt;
   }
@@ -168,9 +160,7 @@ public class dbtool
   private static Statement executeWithSchema(String query, Connection conn, String schema)
     throws SQLException
   {
-      if (isEnabled(Option.verbose)) {
-          println("executeWithSchema, schema = " +schema);
-      }
+    debug("executeWithSchema, schema = " +schema);
 
     Statement stmt = conn.createStatement();
 
@@ -202,9 +192,7 @@ public class dbtool
   private static Statement execute(String query, Connection conn)
     throws SQLException, IOException
   {
-    if (isEnabled(Option.verbose)) {
-        println("building prepared statement, query = " +query);
-    }
+    debug("building prepared statement, query = " +query);
 
     boolean update   = !startsWith(query, getStringList(Option.executeKeywords));
     boolean prepared = update && query.contains("?");
@@ -218,9 +206,7 @@ public class dbtool
               .replace("?s","?");
     }
 
-    if (isEnabled(Option.verbose)) {
-      println("final query = " +query);
-    }
+    debug("final query = " +query);
 
     PreparedStatement stmt = conn.prepareStatement(query);
 
@@ -324,18 +310,11 @@ public class dbtool
 
     //        if (s.matches("^[0-9]+$")) {
             if (fieldTypes.get(i) == Integer.class) {
-
-              if(isEnabled(Option.verbose)) {
-                println("setInt: " +(i+1)+", "+s);
-              }
-
+              debug("setInt: " +(i+1)+", "+s);
               ps.setInt(i+1, Integer.parseInt(s));
             }
             else {
-              if(isEnabled(Option.verbose)) {
-                println("setString: " +(i+1)+", "+s);
-              }
-
+              debug("setString: " +(i+1)+", "+s);
               ps.setString(i+1, s);
             }
           }
@@ -355,33 +334,6 @@ public class dbtool
     return rows;
   }
 
-  // --------------------------------------------------------------------
-
-  private static String readQueryFile(String queryFile) throws IOException {
-    BufferedReader fr;
-
-    try {
-      fr = new BufferedReader(new FileReader(queryFile));
-    }
-    catch (Exception e) {
-      String homeDir = ""+System.getenv("HOME");
-      fr = new BufferedReader(new FileReader(homeDir + "/.dbtool/" + queryFile));
-    }
-
-    String query = "";
-    String nextLine;
-
-    while ((nextLine = fr.readLine()) != null)
-    {
-      query += (query.length() > 0) ? " " : "";
-
-      query += nextLine.replaceAll("--.*","");  // remove end-of-line comments while building query
-    }
-
-    return query;
-  }
-
-
     private static String readFile(Reader r) throws IOException
     {
       BufferedReader fr = new BufferedReader(r);
@@ -397,7 +349,7 @@ public class dbtool
 
   // --------------------------------------------------------------------
 
-    private static List<String> readFixFile(String fixFileName) throws IOException
+    private static List<String> readQueryFile(String fixFileName) throws IOException
     {
       // TODO: use semicolon separators instead of being line-based.
       BufferedReader fr = new BufferedReader(new FileReader(fixFileName));
@@ -411,16 +363,16 @@ public class dbtool
       {
         nextLine = nextLine.replaceAll("--.*","");  // remove end-of-line comments while building query
 
-        if (startsWith(nextLine, getStringList(Option.skipKeywords))) {
-          continue; // do nothing
-        }
-
         statement += " " + nextLine;
 
         if (nextLine.endsWith(";")) {
           queries.add(statement.trim().replaceAll(";$",""));
           statement = "";
         }
+      }
+
+      if (! statement.isEmpty()) {
+        queries.add (statement.trim());
       }
 
       return queries;
@@ -451,18 +403,13 @@ public class dbtool
       return query;
     }
 
-    if(isEnabled(Option.verbose)) {
-      println("Query pre-regex: " + query);
-    }
+    debug("Query pre-regex: " + query);
 
     for (String token : map.keySet()) {
       query = query.replaceAll (token, map.get(token));
     }
 
-    if (isEnabled(Option.verbose)) {
-      println("Query post-regex: " + query);
-    }
-
+    debug("Query post-regex: " + query);
     return query;
   }
 
@@ -482,6 +429,11 @@ public class dbtool
     System.out.println(s);
   }
 
+  public static void debug(final String s) {
+    if (isEnabled(Option.verbose)) {
+      println(s);
+    }
+  }
   public static void error(final String message, final Throwable e)
   {
     System.err.println(message);
@@ -513,40 +465,10 @@ public class dbtool
     }
   }
 
-  public static Properties getResourceProperties(String filename)
-  {
-    Properties props = new Properties();
-
-    try {
-      // look for file in classpath / jarfile(s)
-      URL url = dbtool.class.getClassLoader().getResource(filename);
-
-      if (url != null) {
-        props.load(url.openStream());
-      }
-    }
-    catch (Exception e) {
-      e.printStackTrace();
-    }
-    return props;
-  }
-
   public static void usage()
   {
     printResource(usageFile);
     System.exit(1);
-  }
-
-  public static void dumpSQLException (SQLException sqle) {
-    String error = "UNKNOWN";
-    Exception e = new Exception(error,sqle);
-
-    if (isEnabled(Option.verbose)) {
-      e.printStackTrace();
-    }
-    else {
-      System.err.println ("error = "+error);
-    }
   }
 
   // --------------------------------------------------------------------
@@ -594,55 +516,44 @@ public class dbtool
         DatabaseMetaDataViewer.runCommand(args2);
       }
       catch (SQLException e) {
-        dumpSQLException(e);
+        error("SQLException", e);
       }
       return;
     }
 
+    if (isEnabled(Option.create)) {
+      setProperty(Option.infer, "true"); // there is no good use for create without infer
+    }
+
     String queryFilename = getProperty (Option.query);
-    String fixFilename   = getProperty (Option.fix);
 
     try {
-      List<String> queries;
-      
-      if (fixFilename != null) {
-        queries = readFixFile (fixFilename);
+      List<String> queries = null;
+
+      if (queryFilename != null) {
+        queries = readQueryFile(queryFilename);
       }
-      else {
-        queries = new ArrayList<String>();
+      else if (args.length > 0) {
+        String lastArg = args[args.length - 1];
 
-        if (queryFilename != null) {
-          queries.add (readQueryFile (queryFilename));
-        }
-        else if (args.length > 0) {
-          String lastArg = args[args.length - 1];
-
-          if (lastArg.contains(" ") || lastArg.startsWith("-")) {
-            queries.add (lastArg);
-          }
+        if (lastArg.contains(" ") || lastArg.startsWith("-")) {
+          queries = Collections.singletonList(lastArg);
         }
       }
-
-
-      if (isEnabled(Option.create)) {
-        setProperty(Option.infer, "true"); // there is no good use for create without infer
+      else if (isEnabled(Option.infer)) {
+        queries = Collections.singletonList (inferQuery());
       }
 
-      if (isEnabled(Option.infer)) {
-        run("");
+      if (queries == null) {
+        usage();
       }
-      else {
-        if (queries.isEmpty() && !isEnabled(Option.infer)) {
-          usage();
-        }
 
-        for (String query : queries) {
-          run(query);
-        }
+      for (String query : queries) {
+        run(query);
       }
     }
     catch (SQLException e) {
-      dumpSQLException(e);
+      error("SQLException", e);
     }
     catch (IOException e) {
       error("unable to read query file", e);
