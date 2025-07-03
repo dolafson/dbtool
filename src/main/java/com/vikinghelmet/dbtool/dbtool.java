@@ -7,7 +7,6 @@ import org.supercsv.io.ICsvListReader;
 import org.supercsv.prefs.CsvPreference;
 
 import java.io.*;
-import java.net.URL;
 import java.sql.*;
 import java.util.*;
 import java.util.regex.Matcher;
@@ -60,14 +59,7 @@ public class dbtool
     Statement stmt = null;
 
     try {
-      String schema = getProperty(Option.schema);
-
-      String inputCSV = getProperty(Option.inputCSV);
-      boolean input =  inputCSV != null && !inputCSV.isEmpty();
-
-      stmt = (schema != null && !input) ?
-              executeWithSchema (query, conn, schema) :
-              execute (query, conn);
+      stmt = execute (query, conn);
 
       if (isEnabled(Option.commit)) {
         conn.commit();
@@ -85,8 +77,9 @@ public class dbtool
   }
 
   // --------------------------------------------------------------------
-  private static String inferQuery() throws SQLException, IOException
+  private static List<String> inferQueryFromInputCSV() throws SQLException, IOException
   {
+    List<String> result = new ArrayList<>();
     String inputFilename = getProperty (Option.inputCSV);
 
     if (inputFilename == null) {
@@ -119,8 +112,9 @@ public class dbtool
 
       debug("createStmt: " + createStmt);
 
-      execute (createStmt, conn);
-      conn.commit();
+      result.add(createStmt);
+//      execute (createStmt, conn);
+//      conn.commit();
     }
 
     StringBuilder builder = new StringBuilder("insert into ")
@@ -143,7 +137,8 @@ public class dbtool
 
     debug("insertStmt: " + insertStmt);
 
-    return insertStmt;
+    result.add(insertStmt);
+    return result;
   }
 
   private static List<String> getColumns (String inputFilename) throws IOException {
@@ -155,35 +150,6 @@ public class dbtool
 
     List<String> list = reader.read();
     return list;
-  }
-
-  private static Statement executeWithSchema(String query, Connection conn, String schema)
-    throws SQLException
-  {
-    debug("executeWithSchema, schema = " +schema);
-
-    Statement stmt = conn.createStatement();
-
-    boolean update = !startsWith(query, getStringList(Option.executeKeywords));
-
-    if (update) {
-      int rows = stmt.executeUpdate(query);
-      println("Success (no query results)");
-      println(rows + " rows effected.");
-    }
-    else {
-      boolean stmtResult = stmt.execute(query);
-
-      if (!stmtResult){
-          println("Success (no query results)");
-      }
-      else {
-          ResultSet rs = stmt.getResultSet();
-          (new ResultSetWriter()).write (rs);
-          rs.close();
-      }
-    }
-    return stmt;
   }
 
   // --------------------------------------------------------------------
@@ -531,7 +497,7 @@ public class dbtool
         }
       }
       else if (isEnabled(Option.infer)) {
-        queries = Collections.singletonList (inferQuery());
+        queries = inferQueryFromInputCSV();
       }
 
       if (queries == null) {
