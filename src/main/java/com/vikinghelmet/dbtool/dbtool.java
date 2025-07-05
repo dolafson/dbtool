@@ -59,7 +59,7 @@ public class dbtool
     Statement stmt = null;
 
     try {
-      stmt = execute (query, conn);
+      stmt = executeUpdate(query, conn);
 
       if (isEnabled(Option.commit)) {
         conn.commit();
@@ -155,37 +155,25 @@ public class dbtool
   // --------------------------------------------------------------------
   // TODO: refactor ...
 
-  private static Statement execute(String query, Connection conn)
+  private static Statement executeUpdate(String query, Connection conn)
     throws SQLException, IOException
   {
     debug("building prepared statement, query = " +query);
 
-    boolean update   = !startsWith(query, getStringList(Option.executeKeywords));
-    boolean prepared = update && query.contains("?");
-    List<Class> fieldTypes = null;
-
-    if (prepared) {
-      fieldTypes = getPreparedStatementTypes(query);
-      query = query
-              .replace("?i","?")
-              .replace("?d","?")
-              .replace("?s","?");
-    }
+    List<Parameter> parameterList = getPreparedStatementTypes(query);
+    query = query
+            .replace("?i","?")
+            .replace("?d","?")
+            .replace("?s","?");
 
     debug("final query = " +query);
 
     PreparedStatement stmt = conn.prepareStatement(query);
 
+    boolean update = !startsWith(query, getStringList(Option.executeKeywords));
+
     if (update) {
-      int rows = 0;
-
-      if (!prepared) {
-        rows = stmt.executeUpdate();
-      }
-      else {
-        rows = execute (stmt, fieldTypes);
-      }
-
+      int rows = executeUpdate(stmt, parameterList);
       println("Success (no query results)");
       println(rows + " rows effected.");
     }
@@ -207,11 +195,13 @@ public class dbtool
 
   // --------------------------------------------------------------------
 
-  final static String QUESTION_MARK_PATTERN = "(\\?[si]?)+";
+  final static String QUESTION_MARK_PATTERN =
+          "(\\?[sid]?(\\{[A-Za-z]*})?)+";
+          //"(\\?[sid]?)+";
 
   // TODO: handle more field types (other than int/string), and support cases where '?' is part of a value (not a placeholder)
-  private static List<Class> getPreparedStatementTypes(String query) {
-    List<Class> fieldTypes = new ArrayList<Class>();
+  private static List<Parameter> getPreparedStatementTypes(String query) {
+    List<Parameter> fieldTypes = new ArrayList<Parameter>();
 
     Pattern pattern = Pattern.compile(QUESTION_MARK_PATTERN);
     Matcher matcher = pattern.matcher(query);
@@ -219,13 +209,13 @@ public class dbtool
     while (matcher.find()) {
       String group = matcher.group();
       if (group.equals("?i")) {
-        fieldTypes.add(Integer.class);
+        fieldTypes.add(new Parameter(Integer.class));
       }
       else if (group.equals("?d")) {
-        fieldTypes.add(Double.class);
+        fieldTypes.add(new Parameter(Double.class));
       }
       else {
-        fieldTypes.add(String.class);
+        fieldTypes.add(new Parameter(String.class));
       }
     }
 
@@ -234,10 +224,12 @@ public class dbtool
 
   // --------------------------------------------------------------------
 
-  private static int execute(PreparedStatement ps, List<Class> fieldTypes)
+  private static int executeUpdate(PreparedStatement ps, List<Parameter> parameterList)
     throws SQLException, IOException
   {
-    int rows = 0;
+    if (parameterList.isEmpty()) {
+      return ps.executeUpdate();
+    }
 
     boolean blob = false;
     String inputFilename = getProperty (Option.inputCSV);
@@ -258,43 +250,45 @@ public class dbtool
     if (blob) {
         String blobString = readFile(is);
         ps.setString(1, blobString);
-        rows += ps.executeUpdate();
+        return ps.executeUpdate();
     }
-    else {
-        List<String> list = null;
-        ICsvListReader reader = new CsvListReader(is, CsvPreference.STANDARD_PREFERENCE);
 
-        if (isEnabled(Option.infer)) {
-          reader.read(); // skip header line
+    int rows = 0;
+    List<String> list = null;
+    ICsvListReader reader = new CsvListReader(is, CsvPreference.STANDARD_PREFERENCE);
+
+    if (isEnabled(Option.infer)) {
+      reader.read(); // skip header line
+    }
+
+    while ((list = reader.read()) != null)
+    {
+      for (int i=0; i<list.size(); i++) {
+        String s = list.get(i);
+
+        if (parameterList.get(i).getClazz() == Integer.class) {
+          debug("setInt: " +(i+1)+", "+s);
+          ps.setInt(i+1, Integer.parseInt(s));
         }
-
-        while ((list = reader.read()) != null)
-        {
-          // TODO: ensure array length matches number of ? in ps
-          for (int i=0; i<list.size(); i++) {
-            String s = list.get(i);
-
-    //        if (s.matches("^[0-9]+$")) {
-            if (fieldTypes.get(i) == Integer.class) {
-              debug("setInt: " +(i+1)+", "+s);
-              ps.setInt(i+1, Integer.parseInt(s));
-            }
-            else {
-              debug("setString: " +(i+1)+", "+s);
-              ps.setString(i+1, s);
-            }
-          }
-          ps.addBatch();
-          rows ++;
-          if (rows % 100 == 0) {
-            ps.executeBatch(); // executeUpdate();
-            // println("executeBatch, rows="+rows);
-          }
+        else if (parameterList.get(i).getClazz() == Double.class) {
+          debug("setDouble: " +(i+1)+", "+s);
+          ps.setDouble(i+1, Double.parseDouble(s));
         }
-
-        if (rows % 100 != 0) {
-          ps.executeBatch(); // executeUpdate();
+        else {
+          debug("setString: " +(i+1)+", "+s);
+          ps.setString(i+1, s);
         }
+      }
+      ps.addBatch();
+      rows ++;
+      if (rows % 100 == 0) {
+        ps.executeBatch(); // executeUpdate();
+        // println("executeBatch, rows="+rows);
+      }
+    }
+
+    if (rows % 100 != 0) {
+      ps.executeBatch(); // executeUpdate();
     }
 
     return rows;
