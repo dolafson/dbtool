@@ -59,7 +59,7 @@ public class dbtool
     Statement stmt = null;
 
     try {
-      stmt = executeUpdate(query, conn);
+      stmt = run(query, conn);
 
       if (isEnabled(Option.commit)) {
         conn.commit();
@@ -155,12 +155,12 @@ public class dbtool
   // --------------------------------------------------------------------
   // TODO: refactor ...
 
-  private static Statement executeUpdate(String query, Connection conn)
+  private static Statement run(String query, Connection conn)
     throws SQLException, IOException
   {
     debug("building prepared statement, query = " +query);
 
-    List<Parameter> parameterList = getPreparedStatementTypes(query);
+    List<Parameter> parameterList = getParameterList(query);
     query = query
             .replace("?i","?")
             .replace("?d","?")
@@ -200,7 +200,7 @@ public class dbtool
           //"(\\?[sid]?)+";
 
   // TODO: handle more field types (other than int/string), and support cases where '?' is part of a value (not a placeholder)
-  private static List<Parameter> getPreparedStatementTypes(String query) {
+  private static List<Parameter> getParameterList(String query) {
     List<Parameter> fieldTypes = new ArrayList<Parameter>();
 
     Pattern pattern = Pattern.compile(QUESTION_MARK_PATTERN);
