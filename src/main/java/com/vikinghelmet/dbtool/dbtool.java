@@ -264,6 +264,10 @@ public class dbtool
   {
     int i = Configuration.init(args);
 
+    if (i == args.length) {
+      usage(usageFile);
+    }
+
     try {
       DatabaseMetaDataViewer viewer = new DatabaseMetaDataViewer();
 

@@ -177,6 +177,11 @@ public class DatabaseMetaDataViewer {
         if (table == null) {
             table = DEFAULT_TABLE_NAME_PATTERN;
         }
+        
+        // shortcut: if user didn't include a wildcard, stick it on the end
+        if (! table.contains(DEFAULT_TABLE_NAME_PATTERN)) {
+            table = table + DEFAULT_TABLE_NAME_PATTERN;
+        }
 
         ResultSet rs = getDatabaseMetaData().getColumns(catalog, schema, table, DEFAULT_COLUMN_NAME_PATTERN);
         ResultSetWriter rsw = new ResultSetWriter();
