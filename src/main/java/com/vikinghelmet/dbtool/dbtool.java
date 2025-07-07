@@ -51,7 +51,6 @@ public class dbtool
   private static void run(Query query) throws SQLException, IOException
   {
     String queryString = query.getQuery();
-    List<QueryParameter> queryParameterList = query.getParameterList();
 
     debug("final query = " +query);
 
@@ -64,10 +63,10 @@ public class dbtool
          PreparedStatement ps = conn.prepareStatement(queryString))
     {
       if (fetch) {
-        executeFetch (ps, queryParameterList);
+        executeFetch (query, ps);
       }
       else {
-        int rows = executeUpdate (ps, queryParameterList);
+        int rows = executeUpdate (query, ps);
         println("Success (no query results)");
         println(rows + " rows effected.");
       }
@@ -81,13 +80,11 @@ public class dbtool
 
   // --------------------------------------------------------------------
 
-  private static void executeFetch(PreparedStatement ps, List<QueryParameter> queryParameterList) throws SQLException {
-    // validate: for fetch, params should all be named, not positional
-    boolean foundNoName=false;
-    for (int i = 0; !foundNoName && i< queryParameterList.size(); i++) {
-      foundNoName = queryParameterList.get(i).getName() == null;
-    }
-    if (foundNoName) {
+  private static void executeFetch(Query query, PreparedStatement ps) throws SQLException
+  {
+    List<QueryParameter> queryParameterList = query.getParameterList();
+
+    if (! query.allNamedParameters()) {
       throw new IllegalArgumentException("on fetch, only named parameters are supported");
     }
 
@@ -103,10 +100,15 @@ public class dbtool
 
   // --------------------------------------------------------------------
 
-  private static int executeUpdate(PreparedStatement ps, List<QueryParameter> queryParameterList)
+  private static int executeUpdate(Query query, PreparedStatement ps)
     throws SQLException, IOException
   {
-    if (queryParameterList.isEmpty()) {
+    List<QueryParameter> queryParameterList = query.getParameterList();
+
+    if (query.allNamedParameters()) {
+      for (int i = 0; i< queryParameterList.size(); i++) {
+        setQueryParameter (ps, i+1, queryParameterList.get(i), null);
+      }
       return ps.executeUpdate();
     }
 
@@ -119,7 +121,7 @@ public class dbtool
     }
 
     if (StringUtils.isEmpty(inputFilename)) {
-        throw new IOException ("use of prepared statement requires a filename");
+        throw new IOException ("use of unnamed positional parameters requires a filename");
     }
 
     InputStreamReader is = inputFilename.equals("-") ?
@@ -142,9 +144,14 @@ public class dbtool
 
     while ((list = reader.read()) != null)
     {
-      for (int i=0; i<list.size(); i++) {
-        setQueryParameter (ps, i+1, queryParameterList.get(i), list.get(i));
+      debug("executeUpdate, list = "+list);
+      int inputIndex=0;
+      int outputIndex=1;
+      for (QueryParameter param : queryParameterList) {
+        String value = param.isNamed() ? param.getNamedValue() : list.get(inputIndex++);
+        setQueryParameter (ps, outputIndex++, param, value);
       }
+
       ps.addBatch();
       rows ++;
       if (rows % 100 == 0) {

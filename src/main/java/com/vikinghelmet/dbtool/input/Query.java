@@ -58,4 +58,11 @@ public class Query {
 
         return fieldTypes;
     }
+
+    public boolean allNamedParameters() {
+        for (QueryParameter param : getParameterList()) {
+            if (param.getName() == null) return false;
+        }
+        return true;
+    }
 }

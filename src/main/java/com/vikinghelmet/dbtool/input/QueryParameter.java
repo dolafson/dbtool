@@ -39,6 +39,10 @@ public class QueryParameter {
         return this.clazz;
     }
 
+    public boolean isNamed() {
+        return name != null;
+    }
+
     public String getNamedValue() {
         if (name == null) return null;
         String value = System.getProperty(name);
