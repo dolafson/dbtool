@@ -20,37 +20,7 @@ public class dbtool
   public static final String usageFile = "usage.txt";
   public final static String metaUsageFile = "dmdViewerUsage.txt";
 
-  public static Connection getConnection ()
-  {
-    final String className = getProperty(Option.jdbc_class);
-
-    try {
-      Class.forName(className);
-    }
-    catch (Throwable e) {
-      error("Could not load JDBC driver class (" + className + ")", e);
-    }
-
-    try {
-      Connection conn = DriverManager.getConnection(
-              getProperty(Option.jdbc_url),
-              getProperty(Option.jdbc_user),
-              getProperty(Option.jdbc_password));
-
-      conn.setAutoCommit(false);
-      return conn;
-    }
-    catch (SQLException e) {
-      e.printStackTrace();
-      System.exit(1);
-    }
-
-    return null;
-  }
-
-  // --------------------------------------------------------------------
-
-  private static void run(Query query) throws SQLException, IOException
+  public void run(Query query) throws SQLException, IOException
   {
     String queryString = query.getQuery();
 
@@ -82,7 +52,7 @@ public class dbtool
 
   // --------------------------------------------------------------------
 
-  private static void executeFetch(Query query, PreparedStatement ps) throws SQLException
+  private void executeFetch(Query query, PreparedStatement ps) throws SQLException
   {
     List<QueryParameter> queryParameterList = query.getParameterList();
 
@@ -102,7 +72,7 @@ public class dbtool
 
   // --------------------------------------------------------------------
 
-  private static int executeUpdate(Query query, PreparedStatement ps)
+  private int executeUpdate(Query query, PreparedStatement ps)
     throws SQLException, IOException
   {
     List<QueryParameter> queryParameterList = query.getParameterList();
@@ -168,7 +138,7 @@ public class dbtool
     return rows;
   }
 
-  private static void setQueryParameter (PreparedStatement ps, int paramIndex, QueryParameter param, String value) throws SQLException
+  private void setQueryParameter (PreparedStatement ps, int paramIndex, QueryParameter param, String value) throws SQLException
   {
     if (value == null) {
       value = param.getNamedValue();
@@ -197,7 +167,7 @@ public class dbtool
     }
   }
 
-  private static String readFile(Reader r) throws IOException
+  private String readFile(Reader r) throws IOException
     {
       BufferedReader fr = new BufferedReader(r);
       String result = "";
@@ -209,6 +179,36 @@ public class dbtool
 
       return result;
     }
+
+  // --------------------------------------------------------------------
+
+  public static Connection getConnection ()
+  {
+    final String className = getProperty(Option.jdbc_class);
+
+    try {
+      Class.forName(className);
+    }
+    catch (Throwable e) {
+      error("Could not load JDBC driver class (" + className + ")", e);
+    }
+
+    try {
+      Connection conn = DriverManager.getConnection(
+              getProperty(Option.jdbc_url),
+              getProperty(Option.jdbc_user),
+              getProperty(Option.jdbc_password));
+
+      conn.setAutoCommit(false);
+      return conn;
+    }
+    catch (SQLException e) {
+      e.printStackTrace();
+      System.exit(1);
+    }
+
+    return null;
+  }
 
   // --------------------------------------------------------------------
 
@@ -286,8 +286,10 @@ public class dbtool
         usage(usageFile);
       }
 
+      dbtool tool = new dbtool();
+
       for (Query query : queryList) {
-        run(query);
+        tool.run(query);
       }
     }
     catch (SQLException | IllegalAccessException | InvocationTargetException e) {
