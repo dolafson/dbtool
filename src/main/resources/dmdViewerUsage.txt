@@ -6,22 +6,31 @@ commands that return a ResultSet
 ================================
 
     getAttributes           catalog  schemaPattern  typeNamePattern  attributeNamePattern
+    getBestRowIdentifier    catalog  schema  table  scope  nullable
     getCatalogs
+    getClientInfoProperties
+
     getColumnPrivileges     catalog  schema  table  columnNamePattern
     getColumns              catalog  schemaPattern  tableNamePattern  columnNamePattern
-    getCrossReference       catalog1  schema1  table1  catalog2  schema2  table2
+    getCrossReference       catalog1 schema1 table1  catalog2  schema2  table2
     getExportedKeys         catalog  schema  table
+
+    getFunctionColumns      catalog  schemaPattern  functionNamePattern columnNamePattern
+    getFunctions            catalog  schemaPattern  functionNamePattern
+
     getImportedKeys         catalog  schema  table
     getIndexInfo            catalog  schema  table  unique(T|F)  approximate(T|F)
     getPrimaryKeys          catalog  schema  table
     getProcedureColumns     catalog  schemaPattern  procedureNamePattern  columnNamePattern
     getProcedures           catalog  schemaPattern  procedureNamePattern
+
+    getPseudoColumns        catalog  schemaPattern  tableNamePattern  columnNamePattern
     getSchemas
     getSuperTables          catalog  schemaPattern  tableNamePattern
     getSuperTypes           catalog  schemaPattern  typeNamePattern
     getTablePrivileges      catalog  schemaPattern  tableNamePattern
-    getTables               catalog  schemaPattern  tableNamePattern  [types ...]
     getTableTypes
+    getTables               catalog  schemaPattern  tableNamePattern  [types ...]
     getTypeInfo
     getUDTs                 catalog  schemaPattern  typeNamePattern  [types ...]
     getVersionColumns       catalog  schema  table
@@ -34,35 +43,138 @@ commands that return a String
     getCatalogTerm
     getDatabaseProductName
     getDatabaseProductVersion
+
     getDriverName
     getDriverVersion
     getExtraNameCharacters
     getIdentifierQuoteString
+
+    getNumericFunctions
     getProcedureTerm
+    getSQLKeywords
     getSchemaTerm
     getSearchStringEscape
+
+    getStringFunctions
+    getSystemFunctions
+    getTimeDateFunctions
     getURL
     getUserName
 
 
-commands that return a comma-separated String
-=============================================
-
-    getNumericFunctions
-    getStringFunctions
-    getSystemFunctions
-    getSQLKeywords
-    getTimeDateFunctions
-
-
-commands that return a boolean/int
-==================================
+commands that return a boolean
+==============================
 
     allProceduresAreCallable
     allTablesAreSelectable
+    autoCommitFailureClosesAllResultSets
     dataDefinitionCausesTransactionCommit
     dataDefinitionIgnoredInTransactions
+    deletesAreDetected          (int)
     doesMaxRowSizeIncludeBlobs
+    generatedKeyAlwaysReturned
+    insertsAreDetected          (int)
+    isCatalogAtStart
+    isReadOnly
+    locatorsUpdateCopy
+
+    nullPlusNonNullIsNull
+    nullsAreSortedAtEnd
+    nullsAreSortedAtStart
+    nullsAreSortedHigh
+    nullsAreSortedLow
+
+    othersDeletesAreVisible     (int)
+    othersInsertsAreVisible     (int)
+    othersUpdatesAreVisible     (int)
+    ownDeletesAreVisible        (int)
+    ownInsertsAreVisible        (int)
+    ownUpdatesAreVisible        (int)
+
+    storesLowerCaseIdentifiers
+    storesLowerCaseQuotedIdentifiers
+    storesMixedCaseIdentifiers
+    storesMixedCaseQuotedIdentifiers
+    storesUpperCaseIdentifiers
+    storesUpperCaseQuotedIdentifiers
+
+    supportsANSI92EntryLevelSQL
+    supportsANSI92FullSQL
+    supportsANSI92IntermediateSQL
+    supportsAlterTableWithAddColumn
+    supportsAlterTableWithDropColumn
+    supportsBatchUpdates
+    supportsCatalogsInDataManipulation
+    supportsCatalogsInIndexDefinitions
+    supportsCatalogsInPrivilegeDefinitions
+    supportsCatalogsInProcedureCalls
+    supportsCatalogsInTableDefinitions
+    supportsColumnAliasing
+    supportsConvert
+    supportsCoreSQLGrammar
+    supportsCorrelatedSubqueries
+    supportsDataDefinitionAndDataManipulationTransactions
+    supportsDataManipulationTransactionsOnly
+    supportsDifferentTableCorrelationNames
+    supportsExpressionsInOrderBy
+    supportsExtendedSQLGrammar
+    supportsFullOuterJoins
+    supportsGetGeneratedKeys
+    supportsGroupBy
+    supportsGroupByBeyondSelect
+    supportsGroupByUnrelated
+
+    supportsIntegrityEnhancementFacility
+    supportsLikeEscapeClause
+    supportsLimitedOuterJoins
+    supportsMinimumSQLGrammar
+    supportsMixedCaseIdentifiers
+    supportsMixedCaseQuotedIdentifiers
+    supportsMultipleOpenResults
+    supportsMultipleResultSets
+    supportsMultipleTransactions
+    supportsNamedParameters
+    supportsNonNullableColumns
+    supportsOpenCursorsAcrossCommit
+    supportsOpenCursorsAcrossRollback
+    supportsOpenStatementsAcrossCommit
+    supportsOpenStatementsAcrossRollback
+    supportsOrderByUnrelated
+    supportsOuterJoins
+    supportsPositionedDelete
+    supportsPositionedUpdate
+
+    supportsResultSetConcurrency    (int,int)
+    supportsResultSetHoldability    (int)
+    supportsResultSetType           (int)
+
+    supportsSavepoints
+    supportsSchemasInDataManipulation
+    supportsSchemasInIndexDefinitions
+    supportsSchemasInPrivilegeDefinitions
+    supportsSchemasInProcedureCalls
+    supportsSchemasInTableDefinitions
+    supportsSelectForUpdate
+    supportsStatementPooling
+    supportsStoredFunctionsUsingCallSyntax
+    supportsStoredProcedures
+    supportsSubqueriesInComparisons
+    supportsSubqueriesInExists
+    supportsSubqueriesInIns
+    supportsSubqueriesInQuantifieds
+    supportsTableCorrelationNames
+    supportsTransactionIsolationLevel     (int)
+    supportsTransactions
+    supportsUnion
+    supportsUnionAll
+    updatesAreDetected(int)
+    usesLocalFilePerTable
+    usesLocalFiles
+
+
+commands that return an integer
+===============================
+
     getDatabaseMajorVersion
     getDatabaseMinorVersion
     getDefaultTransactionIsolation
@@ -92,95 +204,6 @@ commands that return a boolean/int
     getMaxUserNameLength
     getResultSetHoldability
     getSQLStateType
-    isCatalogAtStart
-    isReadOnly
-    locatorsUpdateCopy
-    nullPlusNonNullIsNull
-    nullsAreSortedAtEnd
-    nullsAreSortedAtStart
-    nullsAreSortedHigh
-    nullsAreSortedLow
-    storesLowerCaseIdentifiers
-    storesLowerCaseQuotedIdentifiers
-    storesMixedCaseIdentifiers
-    storesMixedCaseQuotedIdentifiers
-    storesUpperCaseIdentifiers
-    storesUpperCaseQuotedIdentifiers
-    supportsAlterTableWithAddColumn
-    supportsAlterTableWithDropColumn
-    supportsANSI92EntryLevelSQL
-    supportsANSI92FullSQL
-    supportsANSI92IntermediateSQL
-    supportsBatchUpdates
-    supportsCatalogsInDataManipulation
-    supportsCatalogsInIndexDefinitions
-    supportsCatalogsInPrivilegeDefinitions
-    supportsCatalogsInProcedureCalls
-    supportsCatalogsInTableDefinitions
-    supportsColumnAliasing
-    supportsConvert
-    supportsCoreSQLGrammar
-    supportsCorrelatedSubqueries
-    supportsDataDefinitionAndDataManipulationTransactions
-    supportsDataManipulationTransactionsOnly
-    supportsDifferentTableCorrelationNames
-    supportsExpressionsInOrderBy
-    supportsExtendedSQLGrammar
-    supportsFullOuterJoins
-    supportsGetGeneratedKeys
-    supportsGroupBy
-    supportsGroupByBeyondSelect
-    supportsGroupByUnrelated
-    supportsIntegrityEnhancementFacility
-    supportsLikeEscapeClause
-    supportsLimitedOuterJoins
-    supportsMinimumSQLGrammar
-    supportsMixedCaseIdentifiers
-    supportsMixedCaseQuotedIdentifiers
-    supportsMultipleOpenResults
-    supportsMultipleResultSets
-    supportsMultipleTransactions
-    supportsNamedParameters
-    supportsNonNullableColumns
-    supportsOpenCursorsAcrossCommit
-    supportsOpenCursorsAcrossRollback
-    supportsOpenStatementsAcrossCommit
-    supportsOpenStatementsAcrossRollback
-    supportsOrderByUnrelated
-    supportsOuterJoins
-    supportsPositionedDelete
-    supportsPositionedUpdate
-    supportsSavepoints
-    supportsSchemasInDataManipulation
-    supportsSchemasInIndexDefinitions
-    supportsSchemasInPrivilegeDefinitions
-    supportsSchemasInProcedureCalls
-    supportsSchemasInTableDefinitions
-    supportsSelectForUpdate
-    supportsStatementPooling
-    supportsStoredProcedures
-    supportsSubqueriesInComparisons
-    supportsSubqueriesInExists
-    supportsSubqueriesInIns
-    supportsSubqueriesInQuantifieds
-    supportsTableCorrelationNames
-    supportsTransactions
-    supportsUnion
-    supportsUnionAll
-    usesLocalFilePerTable
-    usesLocalFiles
 
 
-new in jdk 1.5/1.6  (may not be supported by all jdbc drivers)
-==============================================================
-
-    getClientInfoProperties
-    getFunctionColumns      catalog  schemaPattern  functionNamePattern  columnNamePattern
-    getFunctions            catalog  schemaPattern  functionNamePattern
-    getSchemas              catalog  schemaPattern
-
-    getRowIdLifetime
-    autoCommitFailureClosesAllResultSets
-    supportsStoredFunctionsUsingCallSyntax
-
-
+For more info:  https://docs.oracle.com/javase/8/docs/api/java/sql/DatabaseMetaData.html

@@ -11,12 +11,14 @@ import org.supercsv.io.ICsvListReader;
 import org.supercsv.prefs.CsvPreference;
 
 import java.io.*;
+import java.lang.reflect.InvocationTargetException;
 import java.sql.*;
 import java.util.*;
 
 public class dbtool
 {
   public static final String usageFile = "usage.txt";
+  public final static String metaUsageFile = "dmdViewerUsage.txt";
 
   public static Connection getConnection ()
   {
@@ -228,9 +230,8 @@ public class dbtool
     System.exit(1);
   }
 
-  public static void usage()
+  public static void usage(String filename)
   {
-    String filename = usageFile;
     try (InputStream is = dbtool.class.getClassLoader().getResourceAsStream(filename))
     {
       if (is == null) {
@@ -248,70 +249,48 @@ public class dbtool
 
   // --------------------------------------------------------------------
 
+  public static String[] copyArgs(String[] args, int offset) {
+    int size = args.length - offset;
+    String args2[] = new String[size];
+    System.arraycopy(args, offset, args2, 0, size);
+    return args2;
+  }
+
+  public static String optArg(String[] args, int optIndex) {
+    return (args.length > optIndex) ? args[optIndex] : null;
+  }
+
   public static void main(String[] args)
   {
-    Configuration.init(args);
-
-    boolean metaDataRequest = false;    // was metadata requested ?
-    int commandStart = 0;               // first arg after all "-d" and "param=value" args                            
-
-    for (int i=0; i<args.length; i++) {
-      if (args[i].equals("-d")) {
-        metaDataRequest = true;
-      }
-      else if (commandStart == 0 && args[i].equals("getNodes"))
-      {
-        System.out.println ("nodes = "+Configuration.getNodes());
-        System.exit(0);
-      }
-      else if (commandStart == 0 &&
-              (args[i].equals(DatabaseMetaDataViewer.DESCRIBE) ||
-               args[i].equals(DatabaseMetaDataViewer.GET_TABLES) ||
-               args[i].equals(DatabaseMetaDataViewer.GET_SCHEMAS)))
-      {
-          metaDataRequest = true;
-          commandStart = i;
-          break;
-      }
-      else if (! args[i].contains("=") && commandStart == 0) {
-        commandStart = i;
-      }
-    }
-
-    if (metaDataRequest) {
-      if (commandStart == 0 && args.length == 1 && args[0].equals("-d")) { // special case to show dmdv usage
-        commandStart = args.length;
-      }
-      int size = args.length - commandStart;
-      String args2[] = new String[size];
-
-      System.arraycopy(args, commandStart, args2, 0, size);
-
-      try {
-        DatabaseMetaDataViewer.runCommand(args2);
-      }
-      catch (SQLException e) {
-        error("SQLException", e);
-      }
-      return;
-    }
-
-    if (isEnabled(Option.create)) {
-      setProperty(Option.infer, "true"); // there is no good use for create without infer
-    }
+    int i = Configuration.init(args);
 
     try {
+      DatabaseMetaDataViewer viewer = new DatabaseMetaDataViewer();
+
+      switch (args[i]) {
+        case "getNodes":   System.out.println (Configuration.getNodes()); return;
+        case "getSchemas": viewer.printSchemas(); return;
+        case "describe":   viewer.describe    (optArg (args,i+1)); return;
+        case "getTables":  viewer.printTables (optArg (args,i+1)); return;
+        case "metaUsage":  usage(metaUsageFile); return;
+      }
+
+      if (viewer.isSupported (args[i])) {
+        viewer.runCommand (copyArgs (args,i));
+        return;
+      }
+
       List<Query> queryList = QueryBuilder.build(args);
 
       if (queryList.isEmpty()) {
-        usage();
+        usage(usageFile);
       }
 
       for (Query query : queryList) {
         run(query);
       }
     }
-    catch (SQLException e) {
+    catch (SQLException | IllegalAccessException | InvocationTargetException e) {
       error("SQLException", e);
     }
     catch (IOException e) {

@@ -1,15 +1,16 @@
  
-Usage: 
+Usage: one of the following
 
-      java -jar dbtool.jar getNodes
       java -jar dbtool.jar [param=value] ... [query]
+      java -jar dbtool.jar [param=value] ... <command> [optArgs]
 
-      java -jar dbtool.jar [param=value] ... getSchemas
-      java -jar dbtool.jar [param=value] ... getTables
-      java -jar dbtool.jar [param=value] ... describe [tablename]
+Where <command> may be:
 
-      java -jar dbtool.jar [param=value] ... -d  <metadata command>  [args ...]
-
+      getNodes
+      getSchemas
+      getTables  [tableNamePrefix]
+      describe   [tableNamePrefix]
+      metaUsage
 
 Parameters can be provided on the command-line or in a file named 'dbtool.properties'.
 If found, the properties file will be loaded from the following directories, in order:
@@ -31,7 +32,7 @@ Opt. param  default  description
  node       n/a      Load node-specific properties
  schema     n/a      Default schema to use for query
  delim      ,        Field delimeter to use for output
- query      n/a      Filename: one/more queries, separated by ";"
+ query      n/a      Filename: one/more queries, separated by ";" (substitute for query on cmdline)
  inputCSV   n/a      Filename: CSV data for use in a PreparedStatement
  inputText  n/a      Filename: Text data for use in a PreparedStatement (single column)
 

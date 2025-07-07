@@ -86,7 +86,7 @@ public class QueryBuilder {
         List<String> columns = getColumns(inputFilename);
 
         Connection conn = dbtool.getConnection();
-        List<String> tableList = DatabaseMetaDataViewer.getTables(conn, tableName);
+        List<String> tableList = new DatabaseMetaDataViewer().getTables(conn, tableName);
 
         if (tableList.isEmpty()) {
             StringBuilder builder = new StringBuilder("create table if not exists ")

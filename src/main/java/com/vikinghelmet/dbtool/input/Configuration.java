@@ -21,7 +21,7 @@ import java.util.Properties;
 public class Configuration {
   private static Properties props;
 
-  public static void init (String args[]) {
+  public static int init (String args[]) {
     props = new Properties();
 
     String homeDir = ""+System.getenv("HOME");
@@ -33,12 +33,14 @@ public class Configuration {
 
     Properties tmpProps = new Properties();
 
-    for (String arg : args) {
-      if (arg.contains("=")) {
-        String argument[] = arg.split("=", 2);
-        props.setProperty(argument[0], argument[1]);
-        tmpProps.setProperty(argument[0], argument[1]);
-      }
+    int i=0;
+    for (; i<args.length; i++) {
+      String arg = args[i];
+      if (!arg.contains("=")) break;
+
+      String argument[] = arg.split("=", 2);
+      props.setProperty(argument[0], argument[1]);
+      tmpProps.setProperty(argument[0], argument[1]);
     }
 
     if(isEnabled(Option.formatted)) {
@@ -58,6 +60,12 @@ public class Configuration {
     if (isEnabled(Option.dump)) {
       System.out.println(props);
     }
+
+    if (isEnabled(Option.create)) {
+      setProperty(Option.infer, "true"); // there is no good use for create without infer
+    }
+
+    return i;
   }
 
   public static Boolean isEnabled(Option opt) {

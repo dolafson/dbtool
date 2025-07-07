@@ -13,6 +13,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
+import static com.vikinghelmet.dbtool.dbtool.debug;
+
 /**
  * Created by IntelliJ IDEA.
  * User: dolafson
@@ -22,42 +24,36 @@ import java.util.List;
  */
 public class DatabaseMetaDataViewer {
 
-  public final static int MAX_PARAMS = 10;
-  public final static String usageFile = "dmdViewerUsage.txt";
+    public final static String GET_INDEX_INFO = "getIndexInfo";
+    private static final String DEFAULT_CATALOG = null; // "";
+    private static final String DEFAULT_TABLE_NAME_PATTERN = "%";
+    private static final String DEFAULT_COLUMN_NAME_PATTERN = "%";
 
-  public final static String DESCRIBE = "describe";
-  public final static String GET_TABLES = "getTables";
-  public final static String GET_SCHEMAS = "getSchemas";
-  public final static String GET_INDEX_INFO = "getIndexInfo";
+    Connection conn = null;
+    DatabaseMetaData dmd = null;
 
-  private static final String DEFAULT_CATALOG = null; // "";
-  private static final String DEFAULT_TABLE_NAME_PATTERN = "%";
-  private static final String DEFAULT_COLUMN_NAME_PATTERN = "%";
+    public DatabaseMetaDataViewer() {
+    }
 
-  /* as of jdk 1.6, method count for DatabaseMetaData, grouped by return type:
-   *
-   *    String     18
-   *    ResultSet  21
-   *    int        29
-   *    bool       96
-   *
-   * all method names are unique except for two: getSchemas(), supportsConvert() ...
-   * both have one signature with no args, and another sig with two args ...
-   * of those two, the only one i care about at the moment is getSchemas ...
-   *
-   * for getSchemas, the older method (0-arg) is used, because the newer (2-arg)
-   * method is not supported by many jdbc drivers
-   */
+    private Connection getConnection() {
+        if (conn == null) {
+            conn = dbtool.getConnection();
+        }
+        return conn;
+    }
 
-  public static HashMap<String,Method> methodMap = new HashMap<String,Method>();
+    private DatabaseMetaData getDatabaseMetaData() throws SQLException {
+        if (dmd == null) {
+            dmd = getConnection().getMetaData();
+        }
+        return dmd;
+    }
+
+  public static HashMap<String,Method> methodMap = new HashMap<>();
 
   static {
     for (Method m : DatabaseMetaData.class.getMethods()) {
-      String name = m.getName();
-
-      if (! name.equals(GET_SCHEMAS) && ! name.equals(GET_TABLES) && ! name.equals(DESCRIBE)) {
-        methodMap.put(name, m);
-      }
+        methodMap.put(m.getName(), m);
     }
   }
 
@@ -65,7 +61,7 @@ public class DatabaseMetaDataViewer {
   // - supports args of type String, int, and boolean
   // - also supports Array args, but only in the final element of the argList
   // - all methods currently exposed by DatabaseMetaData are supported
-  private static Object[] getParams(String[] args, Class<?> argTypes[]) {
+  private Object[] getParams(String[] args, Class<?> argTypes[]) {
     int size1 = args.length - 1;
     int size2 = argTypes.length;
     int offset = 1;
@@ -103,30 +99,24 @@ public class DatabaseMetaDataViewer {
 
           // keep going until we exhaust the original arg list
           for (int j=0; j<arrayLength && i<args.length; j++) {
-            s = (String) args[offset+i+j];
+            s = args[offset+i+j];
             // at the moment, only int & String arrays are required
             array[j] = (dataType == int.class) ? NumberUtils.toInt(s) : s;
           }
         }
       }
       else if (args2[i] != null) {
-        args2[i] = (""+args2[i]).toUpperCase();
+        args2[i] = (""+args2[i]); // .toUpperCase(); // upper case was needed long ago for db2, causes problems in more modern rdbms
       }
     }
 
     return args2;
   }
 
-    private static ResultSet execute(Connection conn, String query) throws SQLException {
-        PreparedStatement stmt = conn.prepareStatement(query);
-        boolean stmtResult = stmt.execute();
-        // TODO: error handling
-        return stmt.getResultSet();
-    }
-
-  private static List<String> getTableList(Connection conn, String catalog, String schema, String tableNamePattern) throws SQLException {
+  private List<String> getTableList(Connection conn, String catalog, String schema, String tableNamePattern) throws SQLException {
     List<String> result = new ArrayList<String>();
     DatabaseMetaData dmd = conn.getMetaData();
+    debug("getTableList, schema = "+schema);
     ResultSet rs = dmd.getTables(catalog, schema, tableNamePattern, null);
     while (rs.next()) {
       String tableName = rs.getString(3);
@@ -139,7 +129,7 @@ public class DatabaseMetaDataViewer {
     return result;
   }
 
-    public static List<String> getTables(Connection conn, String pattern) throws SQLException {
+    public List<String> getTables(Connection conn, String pattern) throws SQLException {
         List<String> tables;
         // System.out.println ("class: "+conn.getClass().toString());
 
@@ -157,154 +147,72 @@ public class DatabaseMetaDataViewer {
         return tables;
     }
 
-  private static boolean isWildcard(Object obj) {
-    if (obj == null) return true;
-    if (!(obj instanceof String)) return false;
-    String s = (String) obj;
-    return s.length() == 0 || s.contains("%");
-  }
-
-  // workaround for DMD.getIndexInfo(), which requires an explicit tablename instead of a tablename pattern
-  private static void getIndexInfo(Connection conn, Object[] p)
-          throws SQLException, IllegalAccessException, InvocationTargetException
-  {
-    DatabaseMetaData dmd = conn.getMetaData();
-    Method m = methodMap.get(GET_INDEX_INFO);
-
-    if (! isWildcard(p[2])) {
-      (new ResultSetWriter()).write ((ResultSet) (m.invoke(dmd, (Object[]) p)));
-      return;
+    private String getSchema() {
+        return Configuration.getProperty(Option.schema);
     }
 
-    // note: first 3 args of getTables and getIndexInfo match, although getTables takes
-    // a pattern, and getIndexInfo requires an exact match ...
-    List<String> tables = getTableList(conn, (String) p[0], (String) p[1], (String) p[2]);
-
-    // println(""+tables);
-    Configuration.disable(Option.footer);
-
-    for (String table : tables) {
-      if (table.contains("$")) { // TODO: ???
-        continue;
-      }
-      p[2] = table;
-
-      ResultSet rs = (ResultSet) (m.invoke(dmd, (Object[]) p));
-      (new ResultSetWriter()).write(rs);
-      rs.close();
-
-      Configuration.disable(Option.headers);
-    }
-  }
-
-  private static String getSchema() {
-      return Configuration.getProperty(Option.schema);
-  }
-
-  public static void runCommand(String[] args) throws SQLException {
-    Connection conn = dbtool.getConnection();
-    DatabaseMetaData dmd = conn.getMetaData();
-
-    if (args.length == 0) {
-      usage();
+    public boolean isSupported(String cmd) {
+        return methodMap.get(cmd) != null;
     }
 
-    String cmd = args[0];
+    public void printTables(String tablePrefix) throws SQLException {
+        List<String> tables = getTables(getConnection(), tablePrefix);
+        for (String table : tables) {
+            System.out.println(table);
+        }
+    }
 
-    try {
-      if (cmd.equals(GET_SCHEMAS)) {
+    public void printSchemas() throws SQLException {
         // for getSchemas, the older method (0-arg) is used, because the newer (2-arg)
         // method is not supported by many jdbc drivers
+        ResultSet rs = getDatabaseMetaData().getSchemas ();
+        ResultSetWriter rsw = new ResultSetWriter();
+        rsw.suppressColumns( 2 );
+        rsw.write (rs);
+    }
 
-          ResultSet rs = null;
-          ResultSetWriter rsw = new ResultSetWriter();
+    public void describe(String table) throws SQLException {
+        String catalog = DEFAULT_CATALOG;
+        String schema  = getSchema();
+        if (table == null) {
+            table = DEFAULT_TABLE_NAME_PATTERN;
+        }
 
-          rs = dmd.getSchemas ();
-          rsw.suppressColumns( 2 );
-          
-          rsw.write (rs);
-        return;
-      }
+        ResultSet rs = getDatabaseMetaData().getColumns(catalog, schema, table, DEFAULT_COLUMN_NAME_PATTERN);
+        ResultSetWriter rsw = new ResultSetWriter();
+        rsw.suppressColumns( 1,2,5,7,8,9,10,11,12,13,14,15,17,19,20,21,22,23 );
 
-        if (cmd.equals(GET_TABLES)) {
-            List<String> tables = getTables(conn, (args.length > 1) ? args[1] : null);
-
-            for (String table : tables) {
-                System.out.println(""+table);
-            }
-
+        if (rs == null) {
+            System.err.println ("table not found: "+table+", schema = "+schema);
             return;
         }
 
-        if (cmd.equals(DESCRIBE)) {
-            String catalog = DEFAULT_CATALOG;
-            String schema  = getSchema();
-            String table   = (args.length > 1) ? args[1] : DEFAULT_TABLE_NAME_PATTERN; // args[1].toUpperCase() :
+        try {
+            Configuration.enable(Option.errorOnEmptyResultSet);
+            rsw.write (rs);
+        }
+        catch (Exception e) {
+            System.err.println ("table not found: "+table+", schema = "+schema);
+        }
+    }
 
-            ResultSet rs = null;
-            ResultSetWriter rsw = new ResultSetWriter();
+    public void runCommand(String[] args) throws SQLException, IllegalAccessException, InvocationTargetException
+    {
+        String cmd = args[0];
+        Method m = methodMap.get(cmd);
 
-            rs = dmd.getColumns(catalog, schema, table, DEFAULT_COLUMN_NAME_PATTERN);
-            rsw.suppressColumns( 1,2,5,7,8,9,10,11,12,13,14,15,17,19,20,21,22,23 );
-
-            if (rs == null) {
-                System.err.println ("table not found: "+table+", schema = "+schema);
-                return;
-            }
-
-            try {
-                Configuration.enable(Option.errorOnEmptyResultSet);            
-                rsw.write (rs);
-            }
-            catch (Exception e) {
-                System.err.println ("table not found: "+table+", schema = "+schema);
-            }
+        if (m == null) {
+            System.err.println ("method not found: "+cmd); // should not get here if we first check "isSupported"
             return;
         }
 
-      Method m = methodMap.get(cmd);
+        Object[] p = getParams(args, m.getParameterTypes());
 
-      if (m == null) {
-        System.err.println ("method not found: "+cmd);
-        return;
-      }
-
-      Object p[] = getParams(args, m.getParameterTypes());
-
-      // dbtool.println ("found method: "+m);
-      // dbtool.println ("params: "+Arrays.asList(p));
-
-      if (cmd.equals(GET_INDEX_INFO)) {
-        // workaround for DMD.getIndexInfo(), which requires an explicit tablename instead of a tablename pattern
-        getIndexInfo(conn, p);
-      }
-      else if (m.getReturnType() == ResultSet.class) {
-        (new ResultSetWriter()).write ((ResultSet) (m.invoke(dmd, (Object[]) p)));
-      }
-      else {
-        System.out.println (""+m.invoke(dmd, (Object[]) p));
-      }
+        if (m.getReturnType() == ResultSet.class) {
+            (new ResultSetWriter()).write ((ResultSet) (m.invoke(getDatabaseMetaData(), p)));
+        }
+        else {
+            System.out.println (""+m.invoke(getDatabaseMetaData(), p));
+        }
     }
-    catch (IllegalAccessException e) {
-      e.printStackTrace();
-    }
-    catch (InvocationTargetException e) {
-      e.printStackTrace();
-    }
-  }
-
-  private static void usage() {
-    dbtool.usage();
-  }
-
-  public static void main(String[] args) {
-    Configuration.init(args);
-    
-    try {
-      runCommand(args);
-    }
-    catch (SQLException e) {
-      dbtool.error ("SQLException", e);
-    }
-  }
 }
