@@ -1,6 +1,8 @@
-package com.vikinghelmet.dbtool;
+package com.vikinghelmet.dbtool.output;
 
-import static com.vikinghelmet.dbtool.Configuration.*;
+import com.vikinghelmet.dbtool.input.Option;
+
+import static com.vikinghelmet.dbtool.input.Configuration.*;
 
 import java.io.FileOutputStream;
 import java.io.IOException;

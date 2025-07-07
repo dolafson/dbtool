@@ -1,6 +1,6 @@
-package com.vikinghelmet.dbtool;
+package com.vikinghelmet.dbtool.input;
 
-import org.apache.commons.lang.BooleanUtils;
+import com.vikinghelmet.dbtool.input.Option;
 import org.apache.commons.lang.StringUtils;
 
 import java.io.FileInputStream;

@@ -1,7 +1,9 @@
-package com.vikinghelmet.dbtool;
+package com.vikinghelmet.dbtool.output;
 
+import com.vikinghelmet.dbtool.input.Configuration;
+import com.vikinghelmet.dbtool.dbtool;
+import com.vikinghelmet.dbtool.input.Option;
 import org.apache.commons.lang.BooleanUtils;
-import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
 
 import java.lang.reflect.InvocationTargetException;

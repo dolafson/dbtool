@@ -1,4 +1,4 @@
-package com.vikinghelmet.dbtool;
+package com.vikinghelmet.dbtool.output;
 
 import java.sql.Types;
 

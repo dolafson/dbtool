@@ -1,4 +1,4 @@
-package com.vikinghelmet.dbtool;
+package com.vikinghelmet.dbtool.input;
 
 /**
  * Created by IntelliJ IDEA.
@@ -18,8 +18,7 @@ public enum Option {
   rowcolor2("#AAFFCC"),
   delim(","),
 
-  // previously "keywords.{execute,admin,skip}
-  executeKeywords("select,call"),
+  fetchKeywords("select,call"),
   jdbc_class,
   jdbc_url,
   jdbc_user,

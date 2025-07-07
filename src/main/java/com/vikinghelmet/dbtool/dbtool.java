@@ -1,6 +1,10 @@
 package com.vikinghelmet.dbtool;
 
-import static com.vikinghelmet.dbtool.Configuration.*;
+import static com.vikinghelmet.dbtool.input.Configuration.*;
+
+import com.vikinghelmet.dbtool.input.*;
+import com.vikinghelmet.dbtool.output.DatabaseMetaDataViewer;
+import com.vikinghelmet.dbtool.output.ResultSetWriter;
 import org.apache.commons.lang.StringUtils;
 import org.supercsv.io.CsvListReader;
 import org.supercsv.io.ICsvListReader;
@@ -9,8 +13,6 @@ import org.supercsv.prefs.CsvPreference;
 import java.io.*;
 import java.sql.*;
 import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class dbtool
 {
@@ -46,188 +48,65 @@ public class dbtool
 
   // --------------------------------------------------------------------
 
-  private static void run(String query) throws SQLException, IOException
+  private static void run(Query query) throws SQLException, IOException
   {
-    query = replaceQueryTokens(query);
+    String queryString = query.getQuery();
+    List<QueryParameter> queryParameterList = query.getParameterList();
 
-    if (isEnabled(Option.echo)) {
-      println("");
-      println(query);
+    debug("final query = " +query);
+
+    boolean fetch = false;
+    for (String word : getStringList(Option.fetchKeywords)) {
+      if (queryString.startsWith(word)) { fetch = true; break; }
     }
 
-    Connection conn = getConnection();
-    Statement stmt = null;
-
-    try {
-      stmt = run(query, conn);
+    try (Connection conn = getConnection();
+         PreparedStatement ps = conn.prepareStatement(queryString))
+    {
+      if (fetch) {
+        executeFetch (ps, queryParameterList);
+      }
+      else {
+        int rows = executeUpdate (ps, queryParameterList);
+        println("Success (no query results)");
+        println(rows + " rows effected.");
+      }
 
       if (isEnabled(Option.commit)) {
         conn.commit();
         println("Committed.");
       }
     }
-    catch (SQLException e) {
-      error("SQLException", e);
-      conn.rollback();
-    }    
-    finally {
-        try { if (stmt != null) stmt.close(); } catch (Exception e) {}
-        try { if (conn != null) conn.close(); } catch (Exception e) {}
-    }
   }
 
   // --------------------------------------------------------------------
-  private static List<String> inferQueryFromInputCSV() throws SQLException, IOException
-  {
-    List<String> result = new ArrayList<>();
-    String inputFilename = getProperty (Option.inputCSV);
 
-    if (inputFilename == null) {
-      error("infer requires use of inputCSV", null);
+  private static void executeFetch(PreparedStatement ps, List<QueryParameter> queryParameterList) throws SQLException {
+    // validate: for fetch, params should all be named, not positional
+    boolean foundNoName=false;
+    for (int i = 0; !foundNoName && i< queryParameterList.size(); i++) {
+      foundNoName = queryParameterList.get(i).getName() == null;
+    }
+    if (foundNoName) {
+      throw new IllegalArgumentException("on fetch, only named parameters are supported");
     }
 
-    setProperty(Option.commit, "true"); // I can't imagine ever wanting to use infer/create without commit
-
-    String tableName = inputFilename
-            .replaceAll("\\.csv","")
-            .replaceAll("\\.","_")
-            .replaceAll(".*/","");
-
-    List<String> columns = getColumns(inputFilename);
-
-    Connection conn = getConnection();
-    List<String> tableList = DatabaseMetaDataViewer.getTables(conn, tableName);
-
-    if (tableList.isEmpty()) {
-      StringBuilder builder = new StringBuilder("create table if not exists ")
-              .append(tableName)
-              .append(" ( ");
-
-      for (int i=0; i<columns.size(); i++){
-        builder.append(columns.get(i)).append(" varchar(255)");
-        if (i < columns.size()-1) builder.append(",");
-      }
-
-      String createStmt = builder.append(" );").toString();
-
-      debug("createStmt: " + createStmt);
-
-      result.add(createStmt);
-//      execute (createStmt, conn);
-//      conn.commit();
+    for (int i = 0; i< queryParameterList.size(); i++) {
+      setQueryParameter (ps, i+1, queryParameterList.get(i), null);
     }
 
-    StringBuilder builder = new StringBuilder("insert into ")
-            .append(tableName)
-            .append(" ( ");
-
-    for (int i=0; i<columns.size(); i++){
-      builder.append(columns.get(i));
-      if (i < columns.size()-1) builder.append(",");
-    }
-
-    builder.append(" ) values ( ");
-
-    for (int i=0; i<columns.size(); i++){
-      builder.append(" ?s ");                         // note: the 's' in ?s implies varchar; it gets stripped out before preparing stmt
-      if (i < columns.size()-1) builder.append(",");
-    }
-
-    String insertStmt = builder.append(" );").toString();
-
-    debug("insertStmt: " + insertStmt);
-
-    result.add(insertStmt);
-    return result;
+    ResultSet rs = ps.executeQuery();
+    (new ResultSetWriter()).write (rs);
+    rs.close();
   }
 
-  private static List<String> getColumns (String inputFilename) throws IOException {
-    InputStreamReader is = inputFilename.equals("-") ?
-            new InputStreamReader (System.in) :
-            new InputStreamReader (new FileInputStream(inputFilename));
-
-    ICsvListReader reader = new CsvListReader(is, CsvPreference.STANDARD_PREFERENCE);
-
-    List<String> list = reader.read();
-    return list;
-  }
 
   // --------------------------------------------------------------------
-  // TODO: refactor ...
 
-  private static Statement run(String query, Connection conn)
+  private static int executeUpdate(PreparedStatement ps, List<QueryParameter> queryParameterList)
     throws SQLException, IOException
   {
-    debug("building prepared statement, query = " +query);
-
-    List<Parameter> parameterList = getParameterList(query);
-    query = query
-            .replace("?i","?")
-            .replace("?d","?")
-            .replace("?s","?");
-
-    debug("final query = " +query);
-
-    PreparedStatement stmt = conn.prepareStatement(query);
-
-    boolean update = !startsWith(query, getStringList(Option.executeKeywords));
-
-    if (update) {
-      int rows = executeUpdate(stmt, parameterList);
-      println("Success (no query results)");
-      println(rows + " rows effected.");
-    }
-    else {
-      boolean stmtResult = stmt.execute();
-
-      if (!stmtResult){
-          println("Success (no query results)");
-      }
-      else {
-          ResultSet rs = stmt.getResultSet();
-          (new ResultSetWriter()).write (rs);
-          rs.close();
-      }
-    }
-    return stmt;
-  }
-
-
-  // --------------------------------------------------------------------
-
-  final static String QUESTION_MARK_PATTERN =
-          "(\\?[sid]?(\\{[A-Za-z]*})?)+";
-          //"(\\?[sid]?)+";
-
-  // TODO: handle more field types (other than int/string), and support cases where '?' is part of a value (not a placeholder)
-  private static List<Parameter> getParameterList(String query) {
-    List<Parameter> fieldTypes = new ArrayList<Parameter>();
-
-    Pattern pattern = Pattern.compile(QUESTION_MARK_PATTERN);
-    Matcher matcher = pattern.matcher(query);
-
-    while (matcher.find()) {
-      String group = matcher.group();
-      if (group.equals("?i")) {
-        fieldTypes.add(new Parameter(Integer.class));
-      }
-      else if (group.equals("?d")) {
-        fieldTypes.add(new Parameter(Double.class));
-      }
-      else {
-        fieldTypes.add(new Parameter(String.class));
-      }
-    }
-
-    return fieldTypes;
-  }
-
-  // --------------------------------------------------------------------
-
-  private static int executeUpdate(PreparedStatement ps, List<Parameter> parameterList)
-    throws SQLException, IOException
-  {
-    if (parameterList.isEmpty()) {
+    if (queryParameterList.isEmpty()) {
       return ps.executeUpdate();
     }
 
@@ -264,26 +143,12 @@ public class dbtool
     while ((list = reader.read()) != null)
     {
       for (int i=0; i<list.size(); i++) {
-        String s = list.get(i);
-
-        if (parameterList.get(i).getClazz() == Integer.class) {
-          debug("setInt: " +(i+1)+", "+s);
-          ps.setInt(i+1, Integer.parseInt(s));
-        }
-        else if (parameterList.get(i).getClazz() == Double.class) {
-          debug("setDouble: " +(i+1)+", "+s);
-          ps.setDouble(i+1, Double.parseDouble(s));
-        }
-        else {
-          debug("setString: " +(i+1)+", "+s);
-          ps.setString(i+1, s);
-        }
+        setQueryParameter (ps, i+1, queryParameterList.get(i), list.get(i));
       }
       ps.addBatch();
       rows ++;
       if (rows % 100 == 0) {
-        ps.executeBatch(); // executeUpdate();
-        // println("executeBatch, rows="+rows);
+        ps.executeBatch();
       }
     }
 
@@ -294,7 +159,36 @@ public class dbtool
     return rows;
   }
 
-    private static String readFile(Reader r) throws IOException
+  private static void setQueryParameter (PreparedStatement ps, int paramIndex, QueryParameter param, String value) throws SQLException
+  {
+    if (value == null) {
+      value = param.getNamedValue();
+      if (value == null) throw new IllegalArgumentException("no value provided for named parameter: "+param.getName());
+    }
+
+    if (param.getClazz() == null) {
+      param.guessClazz(value);
+    }
+
+    if (param.getClazz() == Boolean.class) {
+      debug("setBoolean: " +paramIndex+", "+ value);
+      ps.setBoolean (paramIndex, Boolean.parseBoolean(value));
+    }
+    else if (param.getClazz() == Double.class) {
+      debug("setDouble: " +paramIndex+", "+ value);
+      ps.setDouble (paramIndex, Double.parseDouble(value));
+    }
+    else if (param.getClazz() == Integer.class) {
+      debug("setInt: " +paramIndex+", "+ value);
+      ps.setInt (paramIndex, Integer.parseInt(value));
+    }
+    else {
+      debug("setString: " +paramIndex+", "+ value);
+      ps.setString (paramIndex, value);
+    }
+  }
+
+  private static String readFile(Reader r) throws IOException
     {
       BufferedReader fr = new BufferedReader(r);
       String result = "";
@@ -308,82 +202,6 @@ public class dbtool
     }
 
   // --------------------------------------------------------------------
-
-    private static List<String> readQueryFile(String fixFileName) throws IOException
-    {
-      // TODO: use semicolon separators instead of being line-based.
-      BufferedReader fr = new BufferedReader(new FileReader(fixFileName));
-
-      List<String> queries = new ArrayList<String>();
-
-      String nextLine;
-      String statement = "";
-
-      while ((nextLine = fr.readLine()) != null)
-      {
-        nextLine = nextLine.replaceAll("--.*","");  // remove end-of-line comments while building query
-
-        statement += " " + nextLine;
-
-        if (nextLine.endsWith(";")) {
-          queries.add(statement.trim().replaceAll(";$",""));
-          statement = "";
-        }
-      }
-
-      if (! statement.isEmpty()) {
-        queries.add (statement.trim());
-      }
-
-      return queries;
-    }
-
-  // --------------------------------------------------------------------
-
-  private static String replaceQueryTokens(String query) {
-    Pattern p = Pattern.compile("#[a-zA-Z]+#");
-    Matcher m = p.matcher(query);
-    Map<String, String> map = new HashMap<String, String>();
-
-    while (m.find()) {
-      String token = m.group();
-      String trimmedToken = token.substring(1, token.length() - 1); // trim off the hash marks
-
-      String replaceValue = getProperty(trimmedToken);
-
-      if (replaceValue == null) {
-        error("error: no value for query parameter: "+trimmedToken, null);
-      }
-      else {
-        map.put(token, replaceValue);
-      }
-    }
-
-    if(map.size() == 0) {
-      return query;
-    }
-
-    debug("Query pre-regex: " + query);
-
-    for (String token : map.keySet()) {
-      query = query.replaceAll (token, map.get(token));
-    }
-
-    debug("Query post-regex: " + query);
-    return query;
-  }
-
-  // --------------------------------------------------------------------
-
-  private static boolean startsWith(String query, List<String> keywords)
-  {
-    String test = query.replaceAll("\\(", "").trim().toLowerCase();
-
-    for (String word : keywords) {
-      if (test.startsWith(word)) return true;
-    }
-    return false;
-  }
 
   public static void println(final String s) {
     System.out.println(s);
@@ -475,30 +293,14 @@ public class dbtool
       setProperty(Option.infer, "true"); // there is no good use for create without infer
     }
 
-    String queryFilename = getProperty (Option.query);
-
     try {
-      List<String> queries = null;
+      List<Query> queryList = QueryBuilder.build(args);
 
-      if (queryFilename != null) {
-        queries = readQueryFile(queryFilename);
-      }
-      else if (args.length > 0) {
-        String lastArg = args[args.length - 1];
-
-        if (lastArg.contains(" ") || lastArg.startsWith("-")) {
-          queries = Collections.singletonList(lastArg);
-        }
-      }
-      else if (isEnabled(Option.infer)) {
-        queries = inferQueryFromInputCSV();
-      }
-
-      if (queries == null) {
+      if (queryList.isEmpty()) {
         usage();
       }
 
-      for (String query : queries) {
+      for (Query query : queryList) {
         run(query);
       }
     }
